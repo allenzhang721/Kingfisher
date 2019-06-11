@@ -97,6 +97,20 @@ open class AnimatedImageView: UIImageView {
         }
     }
     
+    public var ycFrameSize: CGSize? = nil
+    
+    public var ycAllAnimationFrames: [AnimatedFrame] {
+        var frames: [AnimatedFrame] = [AnimatedFrame]()
+        if let ani = self.animator {
+            let frameCount = ani.frameCount
+            if frameCount != 0 {
+                frames.reserveCapacity(frameCount)
+                frames = (0..<frameCount).reduce([]) { $0 + pure(ani.prepareFrame(at: $1, frameSize: ycFrameSize))}
+            }
+        }
+        return frames
+    }
+    
     // MARK: - Public property
     /// Whether automatically play the animation when the view become visible. Default is true.
     public var autoPlayAnimatedImage = true
@@ -285,9 +299,9 @@ extension AnimatedImageView: AnimatorDelegate {
 }
 
 /// Keeps a reference to an `Image` instance and its duration as a GIF frame.
-struct AnimatedFrame {
-    var image: Image?
-    let duration: TimeInterval
+public struct AnimatedFrame {
+    public var image: Image?
+    public let duration: TimeInterval
     
     static let null: AnimatedFrame = AnimatedFrame(image: .none, duration: 0.0)
 }
@@ -387,7 +401,7 @@ class Animator {
         currentPreloadIndex = (frameToProcess + 1) % frameCount - 1
     }
     
-    private func prepareFrame(at index: Int) -> AnimatedFrame {
+    public func prepareFrame(at index: Int, frameSize: CGSize? = nil) -> AnimatedFrame {
         
         guard let imageRef = CGImageSourceCreateImageAtIndex(imageSource, index, nil) else {
             return AnimatedFrame.null
@@ -416,9 +430,11 @@ class Animator {
         let image = Image(cgImage: imageRef)
         let scaledImage: Image?
         
-        if needsPrescaling {
+        if frameSize != nil {
+             scaledImage = image.kf.resize(to: frameSize!, for: contentMode)
+        }else if needsPrescaling{
             scaledImage = image.kf.resize(to: size, for: contentMode)
-        } else {
+        }else {
             scaledImage = image
         }
         
